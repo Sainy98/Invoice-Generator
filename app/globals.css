@@ -315,6 +315,9 @@ button:hover {
 .invoice-table tbody tr:last-child td {
   border-bottom: none;
 }
+.invoice-table tr td:nth-child(2) .input.text-input {
+  width: 1700x;   /* wider */
+}
 
 .invoice-table tbody tr:hover {
   background: rgba(15, 23, 42, 0.85);
