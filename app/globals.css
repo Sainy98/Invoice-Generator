@@ -220,7 +220,7 @@ button:hover {
 
 /* Main card */
 .invoice-card {
-  width: 100%;
+ 
   max-width: 750px;
   background: linear-gradient(145deg, #020617, #020617 35%, #020617 80%, #020617);
   border-radius: var(--radius-lg);
