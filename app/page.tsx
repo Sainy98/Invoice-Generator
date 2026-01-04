@@ -1,65 +1,589 @@
-import Image from "next/image";
+"use client";
 
-export default function Home() {
+import { useEffect, useState } from "react";
+import { FiTrash2, FiPlus, FiDownload, FiShare2 } from "react-icons/fi";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
+import Link from "next/link";
+
+type InvoiceItem = {
+  name: string;
+  qty: number;
+  price: number;
+  discount: number;
+  enableDiscount: boolean;
+};
+
+export default function InvoicePage() {
+  const [items, setItems] = useState<InvoiceItem[]>([
+    { name: "", qty: 1, price: 0, discount: 0, enableDiscount: false },
+  ]);
+
+  const [enableInvoiceDiscount, setEnableInvoiceDiscount] = useState(false);
+  const [invoiceDiscount, setInvoiceDiscount] = useState("");
+  const [discountType, setDiscountType] = useState<"amount" | "percent">(
+    "amount"
+  );
+  const [showBusinessWarning, setShowBusinessWarning] = useState(false);
+
+
+  // Load from localStorage
+  useEffect(() => {
+    const saved = localStorage.getItem("invoiceHistory");
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) setItems(parsed);
+      } catch {
+        // ignore invalid JSON
+      }
+    }
+  }, []);
+
+  // Save to localStorage whenever items change
+  useEffect(() => {
+    localStorage.setItem("invoiceHistory", JSON.stringify(items));
+  }, [items]);
+
+  const sanitizePositive = (val: string | number, allowZero = true) => {
+    const num = Number(val);
+    if (Number.isNaN(num)) return allowZero ? 0 : 1;
+    if (!allowZero) return Math.max(1, Math.floor(num));
+    return Math.max(0, Math.floor(num));
+  };
+
+  const updateItem = (index: number, field: keyof InvoiceItem, value: any) => {
+    const newItems = [...items];
+    if (field === "qty") {
+      newItems[index].qty = sanitizePositive(value, false);
+    } else if (field === "price" || field === "discount") {
+      newItems[index][field] = sanitizePositive(value, true);
+    } else {
+      (newItems[index] as any)[field] = value;
+    }
+    setItems(newItems);
+  };
+
+  const addRow = () => {
+    setItems([
+      ...items,
+      { name: "", qty: 1, price: 0, discount: 0, enableDiscount: false },
+    ]);
+  };
+
+  const deleteRow = (index: number) => {
+    if (items.length === 1) return;
+    setItems(items.filter((_, i) => i !== index));
+  };
+
+  const subtotal = items.reduce((sum, item) => {
+    const discount = item.enableDiscount ? item.discount : 0;
+    const lineTotal = Math.max(item.price - discount, 0) * item.qty;
+    return sum + lineTotal;
+  }, 0);
+
+  const invoiceDiscountValue =
+    enableInvoiceDiscount && invoiceDiscount
+      ? discountType === "percent"
+        ? (subtotal * Number(invoiceDiscount || 0)) / 100
+        : Number(invoiceDiscount || 0)
+      : 0;
+
+  const grandTotal = Math.max(subtotal - invoiceDiscountValue, 0);
+const showItemDiscountColumn = items.some(
+  (item) => item.enableDiscount && item.discount > 0
+);
+
+const isBusinessDetailsSaved = () => {
+  const raw = localStorage.getItem("businessDetails");
+
+  if (!raw) {
+    setShowBusinessWarning(true);
+    return false;
+  }
+
+  try {
+    const data = JSON.parse(raw);
+
+    if (
+      !data.businessName?.trim() ||
+      !data.phone?.trim() ||
+      !data.address?.trim()
+    ) {
+      setShowBusinessWarning(true);
+      return false;
+    }
+
+    setShowBusinessWarning(false);
+    return true;
+  } catch {
+    setShowBusinessWarning(true);
+    return false;
+  }
+};
+const handleGeneratePDF = () => {
+  if (!isBusinessDetailsSaved()) return;
+
+  generateSimplePDF();
+};
+
+
+const generateSimplePDF = () => {
+
+
+  const doc = new jsPDF("p", "mm", "a4");
+  const business =
+  JSON.parse(localStorage.getItem("businessDetails") || "{}");
+  const pageWidth = doc.internal.pageSize.getWidth();
+
+  const businessName = business.businessName || "Your Business Name";
+  const phone = business.phone || "";
+  const address = business.address || "";
+
+
+
+/* ===== BUSINESS HEADER ===== */
+doc.setFont("helvetica", "bold");
+doc.setFontSize(14);
+doc.text(businessName, 14, 18);
+
+doc.setFont("helvetica", "normal");
+doc.setFontSize(9);
+
+if (address) {
+  doc.text(address, 14, 24, { maxWidth: 90 });
+}
+
+if (phone) {
+  doc.text(`Phone: ${phone}`, 14, 30);
+}
+
+/* ===== INVOICE TITLE (RIGHT SIDE) ===== */
+doc.setFont("helvetica", "bold");
+doc.setFontSize(18);
+doc.text("INVOICE", 195, 18, { align: "right" });
+
+doc.setFontSize(9);
+doc.setFont("helvetica", "normal");
+doc.text(
+  `Date: ${new Date().toLocaleDateString()}`,
+  195,
+  26,
+  { align: "right" }
+);
+
+
+  /* ===== TABLE ===== */
+ autoTable(doc, {
+  startY: 35,
+  margin: { left: 14, right: 14 }, // page margins
+  tableWidth: "auto", // 🔥 automatically takes full width between margins
+
+  head: showItemDiscountColumn
+    ? [["#", "Item", "Qty", "Price", "Discount", "Total"]]
+    : [["#", "Item", "Qty", "Price", "Total"]],
+
+  body: items.map((item, index) => {
+    const discount = item.enableDiscount ? item.discount : 0;
+    const total = Math.max(item.price - discount, 0) * item.qty;
+
+    return showItemDiscountColumn
+      ? [
+          index + 1,
+          item.name || "-",
+          item.qty,
+          item.price.toFixed(2),
+          discount.toFixed(2),
+          total.toFixed(2),
+        ]
+      : [
+          index + 1,
+          item.name || "-",
+          item.qty,
+          item.price.toFixed(2),
+          total.toFixed(2),
+        ];
+  }),
+
+  theme: "grid",
+
+  styles: {
+    font: "helvetica",
+    fontSize: 10,
+    cellPadding: 4,
+    textColor: [40, 40, 40],
+    valign: "middle",
+  },
+
+  headStyles: {
+    fillColor: [99, 102, 241],
+    textColor: [255, 255, 255],
+    fontStyle: "bold",
+  },
+
+  columnStyles: {}, // remove fixed widths to auto-distribute columns
+
+  alternateRowStyles: {
+    fillColor: [245, 247, 255],
+  },
+});
+
+
+
+  /* ===== TOTALS BLOCK ===== */
+let y = (doc as any).lastAutoTable.finalY + 12;
+
+// right column positions
+const labelX = 120;
+const valueX = 185;
+
+// Subtotal
+doc.setFont("helvetica", "normal");
+doc.setFontSize(10);
+doc.text("Subtotal", labelX, y);
+doc.text(`Rs. ${subtotal.toFixed(2)}`, valueX, y, { align: "right" });
+
+// Invoice Discount
+if (enableInvoiceDiscount) {
+  y += 7;
+  doc.text(
+    `Invoice Discount (${discountType === "percent" ? invoiceDiscount + "%" : "Rs."})`,
+    labelX,
+    y
+  );
+  doc.text(
+    `- Rs. ${invoiceDiscountValue.toFixed(2)}`,
+    valueX,
+    y,
+    { align: "right" }
+  );
+}
+
+// Divider line
+y += 6;
+doc.setDrawColor(200);
+doc.line(labelX, y, valueX, y);
+
+// Grand Total
+y += 8;
+doc.setFont("helvetica", "bold");
+doc.setFontSize(13);
+doc.text("Grand Total", labelX, y);
+doc.text(
+  `Rs. ${grandTotal.toFixed(2)}`,
+  valueX,
+  y,
+  { align: "right" }
+);
+
+
+  doc.save("invoice.pdf");
+};
+  // Share PDF
+  const shareInvoice = async () => {
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.getWidth();
+
+    doc.setFontSize(22);
+    doc.setTextColor(99, 102, 241);
+    doc.text("INVOICE", 20, 20);
+
+    doc.setFontSize(10);
+    doc.setTextColor(100, 100, 100);
+    doc.text(`Date: ${new Date().toLocaleDateString()}`, 20, 30);
+
+    const tableRows = items.map((item, index) => {
+      const discount = item.enableDiscount ? item.discount : 0;
+      const lineTotal = Math.max(item.price - discount, 0) * item.qty;
+      return [
+        index + 1,
+        item.name || "Item",
+        item.qty.toString(),
+        `₹${item.price.toFixed(2)}`,
+        `₹${discount.toFixed(2)}`,
+        `₹${lineTotal.toFixed(2)}`,
+      ];
+    });
+
+    (doc as any).autoTable({
+      startY: 45,
+      head: [["#", "Item Name", "Qty", "Price", "Discount", "Total"]],
+      body: tableRows,
+      headStyles: {
+        fillColor: [99, 102, 241],
+        textColor: 255,
+        fontSize: 11,
+        fontStyle: "bold",
+      },
+      bodyStyles: {
+        fontSize: 10,
+        cellPadding: 4,
+      },
+      columnStyles: {
+        0: { halign: "center", cellWidth: 15 },
+        1: { halign: "left", cellWidth: 60 },
+        2: { halign: "center", cellWidth: 15 },
+        3: { halign: "right", cellWidth: 25 },
+        4: { halign: "right", cellWidth: 25 },
+        5: { halign: "right", cellWidth: 25 },
+      },
+      alternateRowStyles: {
+        fillColor: [245, 245, 245],
+      },
+      margin: { left: 15, right: 15 },
+    });
+
+    const pdfBlob = doc.output("blob");
+    const file = new File([pdfBlob], "invoice.pdf", {
+      type: "application/pdf",
+    });
+
+    if ((navigator as any).canShare && (navigator as any).canShare({ files: [file] })) {
+      await (navigator as any).share({
+        files: [file],
+        title: "Invoice",
+        text: "Invoice generated",
+      });
+    } else {
+      alert("Sharing not supported. Use Download instead.");
+    }
+  };
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <main className="invoice-root">
+      
+      <div className="invoice-card">
+        <header className="invoice-header">
+          <div className="invoice-title">
+            <h1>Invoice Generator</h1>
+            <p>Create professional invoices instantly.</p>
+          </div>
+          <span className="invoice-badge">v1.0</span>
+        </header>
+
+        {/* Items Table */}
+        <div className="table-wrapper">
+          <table className="invoice-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Item</th>
+                <th>Qty</th>
+                <th>Price (₹)</th>
+                <th>Discount</th>
+                <th>Total (₹)</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {items.map((item, index) => {
+                const discount = item.enableDiscount ? item.discount : 0;
+                const total =
+                  Math.max(item.price - discount, 0) * item.qty;
+
+                return (
+                  <tr key={index}>
+                    <td>{index + 1}</td>
+                    <td>
+                      <input
+                        className="input text-input"
+                        value={item.name}
+                        onChange={(e) =>
+                          updateItem(index, "name", e.target.value)
+                        }
+                        placeholder="Item name"
+                      />
+                    </td>
+                    <td>
+                      <input
+                        className="input number-input"
+                        type="number"
+                        min={1}
+                        value={item.qty}
+                        onFocus={(e) => e.target.select()}
+                        onChange={(e) =>
+                          updateItem(
+                            index,
+                            "qty",
+                            e.target.value === "" ? 1 : e.target.value
+                          )
+                        }
+                        onBlur={(e) =>
+                          updateItem(
+                            index,
+                            "qty",
+                            e.target.value === "" ? 1 : e.target.value
+                          )
+                        }
+                      />
+                    </td>
+                    <td>
+                      <input
+                        className="input number-input"
+                        type="number"
+                        placeholder="e.g. 500"
+                        min={0}
+                        value={item.price === 0 ? "" : item.price}
+                        onChange={(e) =>
+                          updateItem(
+                            index,
+                            "price",
+                            e.target.value === "" ? 0 : e.target.value
+                          )
+                        }
+                      />
+                    </td>
+                    <td>
+                      <div className="discount-cell">
+                        <input
+                          type="checkbox"
+                          checked={item.enableDiscount}
+                          onChange={() =>
+                            updateItem(
+                              index,
+                              "enableDiscount",
+                              !item.enableDiscount
+                            )
+                          }
+                        />
+                        {item.enableDiscount && (
+                          <input
+                            className="input number-input"
+                            type="number"
+                            placeholder="₹10"
+                            value={item.discount === 0 ? "" : item.discount}
+                            onChange={(e) =>
+                              updateItem(
+                                index,
+                                "discount",
+                                e.target.value === "" ? 0 : e.target.value
+                              )
+                            }
+                          />
+                        )}
+                      </div>
+                    </td>
+                    <td className="amount-cell">₹{total.toFixed(2)}</td>
+                    <td>
+                      <button
+                        className="icon-button danger"
+                        onClick={() => deleteRow(index)}
+                        aria-label="Delete row"
+                      >
+                        <FiTrash2 />
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
+
+        {/* Add Row */}
+        <button className="primary-ghost-button" onClick={addRow}>
+          <FiPlus />
+          <span>Add Item</span>
+        </button>
+
+        {/* Invoice Discount */}
+        <section className="discount-section">
+          <label className="checkbox-label">
+            <input
+              type="checkbox"
+              checked={enableInvoiceDiscount}
+              onChange={() =>
+                setEnableInvoiceDiscount(!enableInvoiceDiscount)
+              }
             />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
+            Apply invoice-level discount
+          </label>
+
+          {enableInvoiceDiscount && (
+            <div className="discount-controls">
+               <select
+                className="input select-input"
+                value={discountType}
+                onChange={(e) =>
+                  setDiscountType(
+                    e.target.value as "amount" | "percent"
+                  )
+                }
+              >
+                <option value="amount">₹ Amount</option>
+                <option value="percent">% Percentage</option>
+              </select>
+              <input
+                className="input number-input"
+                type="number"
+                min={0}
+                placeholder={
+                  discountType === "percent"
+                    ? "Discount %"
+                    : "Discount ₹200"
+                }
+                value={invoiceDiscount}
+                onChange={(e) =>
+                  setInvoiceDiscount(
+                    e.target.value.replace(/^0+(?=\d)/, "")
+                  )
+                }
+              />
+             
+            </div>
+          )}
+        </section>
+
+        {/* Summary */}
+        <section className="summary-section">
+          <div className="summary-row">
+            <span>Subtotal</span>
+            <span>₹{subtotal.toFixed(2)}</span>
+          </div>
+          {enableInvoiceDiscount && (
+            <div className="summary-row">
+              <span>
+                Invoice Discount{" "}
+                {discountType === "percent" && invoiceDiscount
+                  ? `(${invoiceDiscount}%)`
+                  : ""}
+              </span>
+              <span>- ₹{invoiceDiscountValue.toFixed(2)}</span>
+            </div>
+          )}
+          <div className="summary-row grand">
+            <span>Grand Total</span>
+            <span>₹{grandTotal.toFixed(2)}</span>
+          </div>
+        </section>
+
+        {/* Actions */}
+        <footer className="actions-row">
+         
+
+          <button className="primary-button" onClick={handleGeneratePDF}>
+
+            <FiDownload />
+            <span>Download PDF</span>
+          </button>
+          <button className="secondary-button" onClick={shareInvoice}>
+            <FiShare2 />
+            <span>Share</span>
+          </button>
+        </footer>
+
+       {showBusinessWarning && (
+  <div className="business-warning">
+    <p>
+      Please complete your <strong>Business Details</strong> in Settings
+      before generating invoice.
+    </p>
+    <Link href="/settings" className="warning-btn">
+      Go to Settings
+    </Link>
+  </div>
+)}
+      </div>
+    </main>
   );
 }
