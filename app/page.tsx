@@ -90,268 +90,232 @@ export default function InvoicePage() {
       : 0;
 
   const grandTotal = Math.max(subtotal - invoiceDiscountValue, 0);
-const showItemDiscountColumn = items.some(
-  (item) => item.enableDiscount && item.discount > 0
-);
+  const showItemDiscountColumn = items.some(
+    (item) => item.enableDiscount && item.discount > 0
+  );
 
-const isBusinessDetailsSaved = () => {
-  const raw = localStorage.getItem("businessDetails");
+  const isBusinessDetailsSaved = () => {
+    const raw = localStorage.getItem("businessDetails");
 
-  if (!raw) {
-    setShowBusinessWarning(true);
-    return false;
-  }
-
-  try {
-    const data = JSON.parse(raw);
-
-    if (
-      !data.businessName?.trim() ||
-      !data.phone?.trim() ||
-      !data.address?.trim()
-    ) {
+    if (!raw) {
       setShowBusinessWarning(true);
       return false;
     }
 
-    setShowBusinessWarning(false);
-    return true;
-  } catch {
-    setShowBusinessWarning(true);
-    return false;
-  }
-};
-const handleGeneratePDF = () => {
-  if (!isBusinessDetailsSaved()) return;
+    try {
+      const data = JSON.parse(raw);
 
-  generateSimplePDF();
-};
+      if (
+        !data.businessName?.trim() ||
+        !data.phone?.trim() ||
+        !data.address?.trim()
+      ) {
+        setShowBusinessWarning(true);
+        return false;
+      }
 
-
-const generateSimplePDF = () => {
-
-
-  const doc = new jsPDF("p", "mm", "a4");
-  const business =
-  JSON.parse(localStorage.getItem("businessDetails") || "{}");
-  const pageWidth = doc.internal.pageSize.getWidth();
-
-  const businessName = business.businessName || "Your Business Name";
-  const phone = business.phone || "";
-  const address = business.address || "";
-
-
-
-/* ===== BUSINESS HEADER ===== */
-doc.setFont("helvetica", "bold");
-doc.setFontSize(14);
-doc.text(businessName, 14, 18);
-
-doc.setFont("helvetica", "normal");
-doc.setFontSize(9);
-
-if (address) {
-  doc.text(address, 14, 24, { maxWidth: 90 });
-}
-
-if (phone) {
-  doc.text(`Phone: ${phone}`, 14, 30);
-}
-
-/* ===== INVOICE TITLE (RIGHT SIDE) ===== */
-doc.setFont("helvetica", "bold");
-doc.setFontSize(18);
-doc.text("INVOICE", 195, 18, { align: "right" });
-
-doc.setFontSize(9);
-doc.setFont("helvetica", "normal");
-doc.text(
-  `Date: ${new Date().toLocaleDateString()}`,
-  195,
-  26,
-  { align: "right" }
-);
-
-
-  /* ===== TABLE ===== */
- autoTable(doc, {
-  startY: 35,
-  margin: { left: 14, right: 14 }, // page margins
-  tableWidth: "auto", // 🔥 automatically takes full width between margins
-
-  head: showItemDiscountColumn
-    ? [["#", "Item", "Qty", "Price", "Discount", "Total"]]
-    : [["#", "Item", "Qty", "Price", "Total"]],
-
-  body: items.map((item, index) => {
-    const discount = item.enableDiscount ? item.discount : 0;
-    const total = Math.max(item.price - discount, 0) * item.qty;
-
-    return showItemDiscountColumn
-      ? [
-          index + 1,
-          item.name || "-",
-          item.qty,
-          item.price.toFixed(2),
-          discount.toFixed(2),
-          total.toFixed(2),
-        ]
-      : [
-          index + 1,
-          item.name || "-",
-          item.qty,
-          item.price.toFixed(2),
-          total.toFixed(2),
-        ];
-  }),
-
-  theme: "grid",
-
-  styles: {
-    font: "helvetica",
-    fontSize: 10,
-    cellPadding: 4,
-    textColor: [40, 40, 40],
-    valign: "middle",
-  },
-
-  headStyles: {
-    fillColor: [99, 102, 241],
-    textColor: [255, 255, 255],
-    fontStyle: "bold",
-  },
-
-  columnStyles: {}, // remove fixed widths to auto-distribute columns
-
-  alternateRowStyles: {
-    fillColor: [245, 247, 255],
-  },
-});
-
-
-
-  /* ===== TOTALS BLOCK ===== */
-let y = (doc as any).lastAutoTable.finalY + 12;
-
-// right column positions
-const labelX = 120;
-const valueX = 185;
-
-// Subtotal
-doc.setFont("helvetica", "normal");
-doc.setFontSize(10);
-doc.text("Subtotal", labelX, y);
-doc.text(`Rs. ${subtotal.toFixed(2)}`, valueX, y, { align: "right" });
-
-// Invoice Discount
-if (enableInvoiceDiscount) {
-  y += 7;
-  doc.text(
-    `Invoice Discount (${discountType === "percent" ? invoiceDiscount + "%" : "Rs."})`,
-    labelX,
-    y
-  );
-  doc.text(
-    `- Rs. ${invoiceDiscountValue.toFixed(2)}`,
-    valueX,
-    y,
-    { align: "right" }
-  );
-}
-
-// Divider line
-y += 6;
-doc.setDrawColor(200);
-doc.line(labelX, y, valueX, y);
-
-// Grand Total
-y += 8;
-doc.setFont("helvetica", "bold");
-doc.setFontSize(13);
-doc.text("Grand Total", labelX, y);
-doc.text(
-  `Rs. ${grandTotal.toFixed(2)}`,
-  valueX,
-  y,
-  { align: "right" }
-);
-
-
-  doc.save("invoice.pdf");
-};
-  // Share PDF
-  const shareInvoice = async () => {
-    const doc = new jsPDF();
-    const pageWidth = doc.internal.pageSize.getWidth();
-
-    doc.setFontSize(22);
-    doc.setTextColor(99, 102, 241);
-    doc.text("INVOICE", 20, 20);
-
-    doc.setFontSize(10);
-    doc.setTextColor(100, 100, 100);
-    doc.text(`Date: ${new Date().toLocaleDateString()}`, 20, 30);
-
-    const tableRows = items.map((item, index) => {
-      const discount = item.enableDiscount ? item.discount : 0;
-      const lineTotal = Math.max(item.price - discount, 0) * item.qty;
-      return [
-        index + 1,
-        item.name || "Item",
-        item.qty.toString(),
-        `₹${item.price.toFixed(2)}`,
-        `₹${discount.toFixed(2)}`,
-        `₹${lineTotal.toFixed(2)}`,
-      ];
-    });
-
-    (doc as any).autoTable({
-      startY: 45,
-      head: [["#", "Item Name", "Qty", "Price", "Discount", "Total"]],
-      body: tableRows,
-      headStyles: {
-        fillColor: [99, 102, 241],
-        textColor: 255,
-        fontSize: 11,
-        fontStyle: "bold",
-      },
-      bodyStyles: {
-        fontSize: 10,
-        cellPadding: 4,
-      },
-      columnStyles: {
-        0: { halign: "center", cellWidth: 15 },
-        1: { halign: "left", cellWidth: 60 },
-        2: { halign: "center", cellWidth: 15 },
-        3: { halign: "right", cellWidth: 25 },
-        4: { halign: "right", cellWidth: 25 },
-        5: { halign: "right", cellWidth: 25 },
-      },
-      alternateRowStyles: {
-        fillColor: [245, 245, 245],
-      },
-      margin: { left: 15, right: 15 },
-    });
-
-    const pdfBlob = doc.output("blob");
-    const file = new File([pdfBlob], "invoice.pdf", {
-      type: "application/pdf",
-    });
-
-    if ((navigator as any).canShare && (navigator as any).canShare({ files: [file] })) {
-      await (navigator as any).share({
-        files: [file],
-        title: "Invoice",
-        text: "Invoice generated",
-      });
-    } else {
-      alert("Sharing not supported. Use Download instead.");
+      setShowBusinessWarning(false);
+      return true;
+    } catch {
+      setShowBusinessWarning(true);
+      return false;
     }
   };
 
+  const handleResetInvoice = () => {
+    if (confirm("Are you sure you want to reset the invoice?")) {
+      setItems([
+        { name: "", qty: 1, price: 0, discount: 0, enableDiscount: false },
+      ]);
+      setEnableInvoiceDiscount(false);
+      setInvoiceDiscount("");
+      setDiscountType("amount");
+     
+    }
+  };
+
+ 
+
+  const generateSimplePDF = (mode: "download" | "share") => {
+    if (!isBusinessDetailsSaved()) {
+      if (mode === "share") {
+        setShowBusinessWarning(true);
+      }
+      return;
+    }
+
+    const doc = new jsPDF("p", "mm", "a4");
+    const business =
+      JSON.parse(localStorage.getItem("businessDetails") || "{}");
+    const pageWidth = doc.internal.pageSize.getWidth();
+
+    const businessName = business.businessName || "Your Business Name";
+    const phone = business.phone || "";
+    const address = business.address || "";
+
+
+
+    /* ===== BUSINESS HEADER ===== */
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(14);
+    doc.text(businessName, 14, 18);
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+
+    if (address) {
+      doc.text(address, 14, 24, { maxWidth: 90 });
+    }
+
+    if (phone) {
+      doc.text(`Phone: ${phone}`, 14, 30);
+    }
+
+    /* ===== INVOICE TITLE (RIGHT SIDE) ===== */
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(18);
+    // doc.text("INVOICE", 195, 18, { align: "right" });
+    doc.text("INVOICE", pageWidth - 14, 18, { align: "right" });
+
+    doc.setFontSize(9);
+    doc.setFont("helvetica", "normal");
+
+    // Dynamic date + time
+    const now = new Date();
+    const dateStr = now.toLocaleDateString('en-IN'); // DD/MM/YYYY format (India)
+    const timeStr = now.toLocaleTimeString('en-IN', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    }); // 2:28 PM format
+
+    
+    // doc.text(`Time: ${timeStr}`, 195, 32, { align: "right" });
+    doc.text(`Time: ${timeStr}`, pageWidth - 14, 26, { align: "right" });
+    doc.text(`Date: ${dateStr}`, pageWidth - 14, 32, { align: "right" }); 
+
+
+    /* ===== TABLE ===== */
+    autoTable(doc, {
+      startY: 35,
+      margin: { left: 14, right: 14 }, // page margins
+      tableWidth: "auto", // 🔥 automatically takes full width between margins
+
+      head: showItemDiscountColumn
+        ? [["#", "Item", "Qty", "Price", "Discount", "Total"]]
+        : [["#", "Item", "Qty", "Price", "Total"]],
+
+      body: items.map((item, index) => {
+        const discount = item.enableDiscount ? item.discount : 0;
+        const total = Math.max(item.price - discount, 0) * item.qty;
+
+        return showItemDiscountColumn
+          ? [
+            index + 1,
+            item.name || "-",
+            item.qty,
+            item.price.toFixed(2),
+            discount.toFixed(2),
+            total.toFixed(2),
+          ]
+          : [
+            index + 1,
+            item.name || "-",
+            item.qty,
+            item.price.toFixed(2),
+            total.toFixed(2),
+          ];
+      }),
+
+      theme: "grid",
+
+      styles: {
+        font: "helvetica",
+        fontSize: 10,
+        cellPadding: 4,
+        textColor: [40, 40, 40],
+        valign: "middle",
+      },
+
+      headStyles: {
+        fillColor: [99, 102, 241],
+        textColor: [255, 255, 255],
+        fontStyle: "bold",
+      },
+
+      columnStyles: {}, // remove fixed widths to auto-distribute columns
+
+      alternateRowStyles: {
+        fillColor: [245, 247, 255],
+      },
+    });
+
+
+
+    /* ===== TOTALS BLOCK ===== */
+    let y = (doc as any).lastAutoTable.finalY + 12;
+
+    // right column positions
+    const labelX = 120;
+    // const valueX = 185;
+    const valueX = pageWidth - 14;
+
+    // Subtotal
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    doc.text("Subtotal", labelX, y);
+    doc.text(`Rs. ${subtotal.toFixed(2)}`, valueX, y, { align: "right" });
+
+    // Invoice Discount
+    if (enableInvoiceDiscount) {
+      y += 7;
+      doc.text(
+        `Invoice Discount (${discountType === "percent" ? invoiceDiscount + "%" : "Rs."})`,
+        labelX,
+        y
+      );
+      doc.text(
+        `- Rs. ${invoiceDiscountValue.toFixed(2)}`,
+        valueX,
+        y,
+        { align: "right" }
+      );
+    }
+
+    // Divider line
+    y += 6;
+    doc.setDrawColor(200);
+    doc.line(labelX, y, valueX, y);
+
+    // Grand Total
+    y += 8;
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(13);
+    doc.text("Grand Total", labelX, y);
+    doc.text(
+      `Rs. ${grandTotal.toFixed(2)}`,
+      valueX,
+      y,
+      { align: "right" }
+    );
+    if (mode === "download") {
+      doc.save(`Invoice-${dateStr}, ${timeStr}.pdf`);
+    } else {
+      const pdfBlob = doc.output("blob");
+      const file = new File([pdfBlob], `Invoice-${dateStr}, ${timeStr}.pdf`, { type: "application/pdf" });
+      if (navigator.canShare?.({ files: [file] })) {
+        navigator.share({ files: [file], title: `Invoice-${dateStr}, ${timeStr}.pdf` });
+      } else {
+        doc.save(`Invoice-${dateStr}, ${timeStr}.pdf`); // fallback
+      }
+    }
+  }
+
+
+
   return (
     <main className="invoice-root">
-      
+
       <div className="invoice-card">
         <header className="invoice-header">
           <div className="invoice-title">
@@ -388,8 +352,10 @@ doc.text(
                       <input
                         className="input text-input"
                         value={item.name}
-                        onChange={(e) =>
-                          updateItem(index, "name", e.target.value)
+                        onChange={(e) => {
+                          const captalized = e.target.value.toLowerCase().split(" ").map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join(" ");
+                          updateItem(index, "name", captalized)
+                        }
                         }
                         placeholder="Item name"
                       />
@@ -501,7 +467,7 @@ doc.text(
 
           {enableInvoiceDiscount && (
             <div className="discount-controls">
-               <select
+              <select
                 className="input select-input"
                 value={discountType}
                 onChange={(e) =>
@@ -529,7 +495,7 @@ doc.text(
                   )
                 }
               />
-             
+
             </div>
           )}
         </section>
@@ -559,30 +525,33 @@ doc.text(
 
         {/* Actions */}
         <footer className="actions-row">
-         
+          <button className="secondary-button" onClick={handleResetInvoice} style={{ color: "red" }}>
+            <FiTrash2 />
+            <span>Reset Invoice</span>
+          </button>
 
-          <button className="primary-button" onClick={handleGeneratePDF}>
+          <button className="primary-button" onClick={() => generateSimplePDF("download")}>
 
             <FiDownload />
             <span>Download PDF</span>
           </button>
-          <button className="secondary-button" onClick={shareInvoice}>
+          <button className="secondary-button" onClick={() => generateSimplePDF("share")}>
             <FiShare2 />
             <span>Share</span>
           </button>
         </footer>
 
-       {showBusinessWarning && (
-  <div className="business-warning">
-    <p>
-      Please complete your <strong>Business Details</strong> in Settings
-      before generating invoice.
-    </p>
-    <Link href="/settings" className="warning-btn">
-      Go to Settings
-    </Link>
-  </div>
-)}
+        {showBusinessWarning && (
+          <div className="business-warning">
+            <p>
+              Please complete your <strong>Business Details</strong> in Settings
+              before generating invoice.
+            </p>
+            <Link href="/settings" className="warning-btn">
+              Go to Settings
+            </Link>
+          </div>
+        )}
       </div>
     </main>
   );
