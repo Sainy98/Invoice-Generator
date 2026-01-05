@@ -1,19 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useToast } from "../components/ToastProvider";
 
 export default function SettingsPage() {
   const [businessName, setBusinessName] = useState("");
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
- const [toast, setToast] = useState<{ message: string; type: "success" | "error" | "warning" } | null>(null);
-// Auto-hide toast
-useEffect(() => {
-  if (toast) {
-    const timer = setTimeout(() => setToast(null), 4000);
-    return () => clearTimeout(timer);
-  }
-}, [toast]);
+  const {showToast} = useToast();
+
 
  const capitalize = (text: string) => {
     return text
@@ -36,18 +31,12 @@ useEffect(() => {
   const saveDetails = () => {
     const data = { businessName, phone, address };
     localStorage.setItem("businessDetails", JSON.stringify(data));
-    setToast({ message: "Business details saved successfully!", type: "success" });
+    showToast("Business details saved successfully!", "success");
   };
 
   return (
     <main>
-     <div className="settings-toast-container">
-        {toast && (
-          <div className={`settings-toast settings-toast-${toast.type}`}>
-            <span>{toast.message}</span>
-          </div>
-        )}
-      </div>
+    
 
       <div className="card">
         <h1>Business Settings</h1>

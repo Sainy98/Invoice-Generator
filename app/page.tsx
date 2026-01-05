@@ -5,6 +5,8 @@ import { FiTrash2, FiPlus, FiDownload, FiShare2 } from "react-icons/fi";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import Link from "next/link";
+import { useToast } from "./components/ToastProvider";
+
 
 type InvoiceItem = {
   name: string;
@@ -18,6 +20,8 @@ export default function InvoicePage() {
   const [items, setItems] = useState<InvoiceItem[]>([
     { name: "", qty: 1, price: 0, discount: 0, enableDiscount: false },
   ]);
+
+    const {showToast} = useToast();
 
   const [enableInvoiceDiscount, setEnableInvoiceDiscount] = useState(false);
   const [invoiceDiscount, setInvoiceDiscount] = useState("");
@@ -130,7 +134,7 @@ export default function InvoicePage() {
       setEnableInvoiceDiscount(false);
       setInvoiceDiscount("");
       setDiscountType("amount");
-     
+      showToast("Invoice reset successfully!", "success");
     }
   };
 
@@ -299,6 +303,7 @@ export default function InvoicePage() {
       { align: "right" }
     );
     if (mode === "download") {
+      showToast("PDF successfully generated!", "success");
       doc.save(`Invoice-${dateStr}, ${timeStr}.pdf`);
     } else {
       const pdfBlob = doc.output("blob");
