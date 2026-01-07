@@ -12,9 +12,15 @@ export default function SettingsPage() {
 
  const capitalize = (text: string) => {
     return text
-      .toLowerCase()
+      
       .split(" ")
-      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+      .map((word) => {
+        if (word === word.toUpperCase()) {
+          return word;
+        }
+        return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+
+      })
       .join(" ");
   }
   // Load saved data
@@ -44,7 +50,8 @@ export default function SettingsPage() {
         <label>Business Name</label>
         <input
           value={businessName}
-          onChange={(e) => setBusinessName(capitalize(e.target.value))}
+          onChange={(e) => setBusinessName(e.target.value)}
+          onBlur={(e)=> setBusinessName(capitalize(e.target.value))}
           placeholder="My Store"
         />
 
@@ -58,7 +65,8 @@ export default function SettingsPage() {
         <label>Address</label>
         <textarea
           value={address}
-          onChange={(e) => setAddress(capitalize(e.target.value))}
+          onChange={(e) => setAddress(e.target.value)}
+          onBlur={(e)=> setAddress(capitalize(e.target.value))}
           placeholder="Your business address"
         />
 
