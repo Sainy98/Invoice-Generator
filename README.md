@@ -1,36 +1,92 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+<img width="1061" height="835" alt="image" src="https://github.com/user-attachments/assets/d8632cf4-4354-42ae-9613-7d76f6492ace" />
 
-## Getting Started
+# 🧾 Invoice Generator
 
-First, run the development server:
+A **simple and user-friendly invoice generator** made for small shops and local businesses.  
+It helps shop owners create professional invoices **without pen and paper**.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+🌐 **Live Demo:**  
+👉 https://invoice-generator-teal-alpha.vercel.app
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+---
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## 🚀 Why I Built This
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Many small shop owners (like Kirana stores) still struggle with:
+- Manual billing
+- Calculation mistakes
+- Paper invoices getting lost
 
-## Learn More
+This project solves that problem with a **fast, clean, and digital invoice system**.
 
-To learn more about Next.js, take a look at the following resources:
+---
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## ✨ Features
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- 🧮 Create invoices using a **single table**
+- ➕ Add items with **name, quantity, price, and discount**
+- 📄 Generate **professional PDF invoices**
+- ⬇️ Download invoices instantly
+- 📤 Share invoices easily
+- 💾 Save invoice history **locally** (no login required)
+- 📱 Mobile-friendly design
+- ⚡ Fast and lightweight
 
-## Deploy on Vercel
+---
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## 🛠 Tech Stack
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- ⚛️ Next.js  
+- 💛 JavaScript  
+- 🎨 Tailwind CSS  
+- 📄 jsPDF & AutoTable  
+- 🌐 Vercel (deployment)
+
+---
+
+## 📸 How It Works
+
+1. Enter business details  
+2. Add items in the table  
+3. Apply quantity & discounts  
+4. Generate invoice PDF  
+5. Download or share instantly  
+
+No account. No backend. Just works 👍
+
+---
+
+## 🎯 Best For
+
+- 🏪 Kirana / Local shops  
+- 🧑‍💼 Small business owners  
+- 🧾 Freelancers  
+- 🧑‍🎓 Students learning real-world projects  
+
+---
+
+## 📌 Future Improvements
+
+- ☁️ Cloud backup  
+- 📊 Sales analytics  
+- 🖨 Print support  
+- 🌙 Dark mode  
+
+---
+
+## 🙌 Acknowledgements
+
+Grateful to learning resources like:
+- **W3Schools**
+- **freeCodeCamp**
+- **JavaScript Mastery**
+- **javascript.info**
+
+They made learning practical and beginner-friendly 🙌
+
+---
+
+## ⭐ Feedback
+
+If you like this project, don’t forget to **star the repo** ⭐  
+Suggestions and feedback are always welcome!
